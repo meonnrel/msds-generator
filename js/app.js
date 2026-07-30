@@ -27,22 +27,23 @@ let processedChemicals = [];
 let autocompleteTimeout = null;
 
 // DOM Elements
-const reagentsListEl = document.getElementById('reagentsList');
-const btnAddReagent = document.getElementById('btnAddReagent');
-const btnGenerate = document.getElementById('btnGenerate');
-const msdsPaperEl = document.getElementById('msdsPaper');
-const filenameInput = document.getElementById('filenameInput');
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-const btnExportDocx = document.getElementById('btnExportDocx');
-const btnExportCsv = document.getElementById('btnExportCsv');
-const btnCopyClipboard = document.getElementById('btnCopyClipboard');
-const btnPrintMsds = document.getElementById('btnPrintMsds');
-const toastContainer = document.getElementById('toastContainer');
+let reagentsListEl;
+let btnAddReagent;
+let btnGenerate;
+let msdsPaperEl;
+let filenameInput;
+let themeToggleBtn;
+let btnExportDocx;
+let btnExportCsv;
+let btnCopyClipboard;
+let btnPrintMsds;
+let toastContainer;
 
 /**
  * Show Toast Notification
  */
 function showToast(message, type = 'info') {
+    if (!toastContainer) return;
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
@@ -67,7 +68,6 @@ function createReagentCard(initialName = '') {
     reagentCounter++;
     const cardId = reagentCounter;
 
-    // Default all checkboxes to true
     const defaultProps = {};
     ALL_PROPERTIES.forEach(p => defaultProps[p.key] = true);
 
@@ -112,7 +112,9 @@ function createReagentCard(initialName = '') {
         </div>
     `;
 
-    reagentsListEl.appendChild(card);
+    if (reagentsListEl) {
+        reagentsListEl.appendChild(card);
+    }
     updateReagentNumbers();
 
     // Attach Event Listeners for this card
@@ -209,6 +211,7 @@ function handleAutocomplete(query, dropdownEl, inputEl, reagentObj) {
  * Update numbers on reagent badges after removal
  */
 function updateReagentNumbers() {
+    if (!reagentsListEl) return;
     const cards = reagentsListEl.querySelectorAll('.reagent-card');
     cards.forEach((card, index) => {
         const badge = card.querySelector('.reagent-badge');
@@ -220,6 +223,8 @@ function updateReagentNumbers() {
  * Render Live MSDS Table Preview
  */
 function renderMsdsPreview(chemicals) {
+    if (!msdsPaperEl) return;
+
     if (!chemicals || chemicals.length === 0) {
         msdsPaperEl.innerHTML = `
             <div class="empty-state">
@@ -323,12 +328,13 @@ function renderMsdsPreview(chemicals) {
  * Show Loading State
  */
 function showPreviewSkeleton() {
+    if (!msdsPaperEl) return;
     msdsPaperEl.innerHTML = `
         <div class="msds-paper-header">
             <h2>Material Safety Data Sheet</h2>
             <p>Fetching chemical records from PubChem...</p>
         </div>
-        <div style="padding: 20px; text-align: center; color: #94a3b8;">
+        <div style="padding: 20px; text-align: center; color: var(--pastel-purple);">
             <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
             <p>Loading chemical data...</p>
         </div>
@@ -346,8 +352,10 @@ async function generateMsds() {
         return;
     }
 
-    btnGenerate.disabled = true;
-    btnGenerate.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Fetching...`;
+    if (btnGenerate) {
+        btnGenerate.disabled = true;
+        btnGenerate.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Fetching...`;
+    }
     showPreviewSkeleton();
 
     processedChemicals = [];
@@ -380,8 +388,10 @@ async function generateMsds() {
         }
     }
 
-    btnGenerate.disabled = false;
-    btnGenerate.innerHTML = `<i class="fas fa-bolt"></i> Generate MSDS`;
+    if (btnGenerate) {
+        btnGenerate.disabled = false;
+        btnGenerate.innerHTML = `<i class="fas fa-bolt"></i> Generate MSDS`;
+    }
 
     if (processedChemicals.length === 0) {
         showToast(`Could not find records for: ${errors.join(', ')}`, 'error');
@@ -402,6 +412,7 @@ async function generateMsds() {
  * Theme Toggle Handler
  */
 function initThemeToggle() {
+    if (!themeToggleBtn) return;
     const savedTheme = localStorage.getItem('msds_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
@@ -416,6 +427,7 @@ function initThemeToggle() {
 }
 
 function updateThemeIcon(theme) {
+    if (!themeToggleBtn) return;
     const icon = themeToggleBtn.querySelector('i');
     if (icon) {
         icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
@@ -426,68 +438,101 @@ function updateThemeIcon(theme) {
  * Bind Export Handlers
  */
 function initExportHandlers() {
-    btnExportDocx.addEventListener('click', async () => {
-        if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first.', 'error');
-            return;
-        }
-        const filename = filenameInput.value.trim() || 'MSDS_Output.docx';
-        try {
-            btnExportDocx.disabled = true;
-            btnExportDocx.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Exporting...`;
-            await exportToDocx(processedChemicals, filename);
-            showToast('Word document exported!', 'success');
-        } catch (e) {
-            console.error(e);
-            showToast('Failed to export Word document.', 'error');
-        } finally {
-            btnExportDocx.disabled = false;
-            btnExportDocx.innerHTML = `<i class="fas fa-file-word"></i> Download .docx`;
-        }
-    });
+    if (btnExportDocx) {
+        btnExportDocx.addEventListener('click', async () => {
+            if (processedChemicals.length === 0) {
+                showToast('Please generate an MSDS first.', 'error');
+                return;
+            }
+            const filename = (filenameInput ? filenameInput.value.trim() : '') || 'MSDS_Output.docx';
+            try {
+                btnExportDocx.disabled = true;
+                btnExportDocx.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Exporting...`;
+                await exportToDocx(processedChemicals, filename);
+                showToast('Word document exported!', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('Failed to export Word document.', 'error');
+            } finally {
+                btnExportDocx.disabled = false;
+                btnExportDocx.innerHTML = `<i class="fas fa-file-word"></i> Download .docx`;
+            }
+        });
+    }
 
-    btnExportCsv.addEventListener('click', () => {
-        if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first.', 'error');
-            return;
-        }
-        const filename = (filenameInput.value.trim() || 'MSDS_Output').replace(/\.docx$/i, '') + '.csv';
-        exportToCsv(processedChemicals, filename);
-        showToast('CSV downloaded!', 'success');
-    });
+    if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', () => {
+            if (processedChemicals.length === 0) {
+                showToast('Please generate an MSDS first.', 'error');
+                return;
+            }
+            const filename = ((filenameInput ? filenameInput.value.trim() : '') || 'MSDS_Output').replace(/\.docx$/i, '') + '.csv';
+            exportToCsv(processedChemicals, filename);
+            showToast('CSV downloaded!', 'success');
+        });
+    }
 
-    btnCopyClipboard.addEventListener('click', async () => {
-        if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first.', 'error');
-            return;
-        }
-        try {
-            await copyTableToClipboard(processedChemicals);
-            showToast('MSDS copied to clipboard!', 'success');
-        } catch (e) {
-            showToast('Failed to copy table.', 'error');
-        }
-    });
+    if (btnCopyClipboard) {
+        btnCopyClipboard.addEventListener('click', async () => {
+            if (processedChemicals.length === 0) {
+                showToast('Please generate an MSDS first.', 'error');
+                return;
+            }
+            try {
+                await copyTableToClipboard(processedChemicals);
+                showToast('MSDS copied to clipboard!', 'success');
+            } catch (e) {
+                showToast('Failed to copy table.', 'error');
+            }
+        });
+    }
 
-    btnPrintMsds.addEventListener('click', () => {
-        if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first.', 'error');
-            return;
-        }
-        window.print();
-    });
+    if (btnPrintMsds) {
+        btnPrintMsds.addEventListener('click', () => {
+            if (processedChemicals.length === 0) {
+                showToast('Please generate an MSDS first.', 'error');
+                return;
+            }
+            window.print();
+        });
+    }
 }
 
-// App Initialization
-document.addEventListener('DOMContentLoaded', () => {
+/**
+ * Main App Initialization
+ */
+function initApp() {
+    // Bind DOM elements
+    reagentsListEl = document.getElementById('reagentsList');
+    btnAddReagent = document.getElementById('btnAddReagent');
+    btnGenerate = document.getElementById('btnGenerate');
+    msdsPaperEl = document.getElementById('msdsPaper');
+    filenameInput = document.getElementById('filenameInput');
+    themeToggleBtn = document.getElementById('themeToggleBtn');
+    btnExportDocx = document.getElementById('btnExportDocx');
+    btnExportCsv = document.getElementById('btnExportCsv');
+    btnCopyClipboard = document.getElementById('btnCopyClipboard');
+    btnPrintMsds = document.getElementById('btnPrintMsds');
+    toastContainer = document.getElementById('toastContainer');
+
     initThemeToggle();
     createReagentCard();
     initExportHandlers();
 
-    btnAddReagent.addEventListener('click', () => {
-        const input = createReagentCard();
-        input.focus();
-    });
+    if (btnAddReagent) {
+        btnAddReagent.addEventListener('click', () => {
+            const input = createReagentCard();
+            if (input) input.focus();
+        });
+    }
 
-    btnGenerate.addEventListener('click', generateMsds);
-});
+    if (btnGenerate) {
+        btnGenerate.addEventListener('click', generateMsds);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
