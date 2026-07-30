@@ -29,23 +29,34 @@ const COL2_WIDTH_DXA = 4300; // Physical Properties (~46%)
 const COL3_WIDTH_DXA = 3000; // Safety Information (~32%)
 
 /**
- * Format chemical formula into array of docx TextRun parts (subscript numbers)
+ * Format chemical formula into array of docx TextRun parts using native Google Docs / Word subscript (Ctrl + ,)
  */
 function createFormulaRuns(docx, formula) {
     if (!formula || formula === 'Not Available') {
         return [new docx.TextRun({ text: 'Not Available', font: 'Arial', size: FONT_SIZE_11PT })];
     }
 
-    const parts = formula.split(/(\d+)/);
-    return parts.map(part => {
-        const isNum = /^\d+$/.test(part);
-        return new docx.TextRun({
-            text: part,
-            font: 'Arial',
-            size: FONT_SIZE_11PT,
-            subScript: isNum
-        });
-    });
+    // Numbers immediately following an element symbol, ')', ']', or '}' are subscripts (e.g. H2SO4 -> H(sub 2)S O(sub 4))
+    const regex = /([A-Za-z\)\}\]])(\d+)/g;
+    const runs = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(formula)) !== null) {
+        const textBefore = formula.substring(lastIndex, match.index) + match[1];
+        if (textBefore) {
+            runs.push(new docx.TextRun({ text: textBefore, font: 'Arial', size: FONT_SIZE_11PT }));
+        }
+        runs.push(new docx.TextRun({ text: match[2], font: 'Arial', size: FONT_SIZE_11PT, subScript: true }));
+        lastIndex = regex.lastIndex;
+    }
+
+    const remaining = formula.substring(lastIndex);
+    if (remaining) {
+        runs.push(new docx.TextRun({ text: remaining, font: 'Arial', size: FONT_SIZE_11PT }));
+    }
+
+    return runs.length > 0 ? runs : [new docx.TextRun({ text: formula, font: 'Arial', size: FONT_SIZE_11PT })];
 }
 
 /**

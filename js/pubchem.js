@@ -40,19 +40,40 @@ export function cleanText(text) {
 }
 
 /**
- * Capitalize first letter of each word
+ * Fix scientific unit casing (e.g. mg/L, g/mL, °C, g/mol)
  */
-export function titleCase(text) {
+export function fixUnitCasing(text) {
     if (!text || text === 'Not Available' || text === 'Not available') return text;
-    return text.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    
+    return text
+        .replace(/\bmg\/l\b/gi, 'mg/L')
+        .replace(/\bg\/l\b/gi, 'g/L')
+        .replace(/\bmg\/ml\b/gi, 'mg/mL')
+        .replace(/\bg\/ml\b/gi, 'g/mL')
+        .replace(/\bg\/cm3\b/gi, 'g/cm³')
+        .replace(/\bg\/cm\^3\b/gi, 'g/cm³')
+        .replace(/\bg\/mol\b/gi, 'g/mol')
+        .replace(/\bdeg c\b/gi, '°C')
+        .replace(/\bdeg c\.\b/gi, '°C')
+        .replace(/°\s*c\b/gi, '°C')
+        .replace(/\bcelsius\b/gi, '°C');
 }
 
 /**
- * Format chemical formulas with HTML subscripts (e.g. H2SO4 -> H<sub>2</sub>SO<sub>4</sub>)
+ * Capitalize first letter of each word while preserving scientific units
+ */
+export function titleCase(text) {
+    if (!text || text === 'Not Available' || text === 'Not available') return text;
+    const formatted = text.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    return fixUnitCasing(formatted);
+}
+
+/**
+ * Format chemical formulas with HTML subscripts (numbers after letters or brackets)
  */
 export function formatFormulaHtml(formula) {
     if (!formula || formula === 'Not Available') return 'Not Available';
-    return formula.replace(/(\d+)/g, '<sub>$1</sub>');
+    return formula.replace(/([A-Za-z\)\}\]])(\d+)/g, '$1<sub>$2</sub>');
 }
 
 /**
@@ -189,7 +210,7 @@ function getBasicProperties(compoundRecord) {
                 formula = prop?.value?.sval || formula;
             } else if (label === 'Molecular Weight') {
                 const val = prop?.value?.sval || prop?.value?.fval;
-                if (val) molarMass = `${val} g/mol`;
+                if (val) molarMass = fixUnitCasing(`${val} g/mol`);
             }
         }
     } catch (e) {
@@ -226,28 +247,36 @@ function getPhysicalProperties(viewRecord) {
         const odor = titleCase(odorRaw === 'Not Available' ? odorRaw : odorRaw.replace(/\s+odor$/i, ''));
 
         // Boiling Point
-        const boilingPoint = chooseValue(
-            extractValues(findSection(sections, 'Boiling Point')),
-            ['deg C', '°C']
+        const boilingPoint = fixUnitCasing(
+            chooseValue(
+                extractValues(findSection(sections, 'Boiling Point')),
+                ['deg C', '°C']
+            )
         );
 
         // Melting Point
-        const meltingPoint = chooseValue(
-            extractValues(findSection(sections, 'Melting Point')),
-            ['deg C', '°C']
+        const meltingPoint = fixUnitCasing(
+            chooseValue(
+                extractValues(findSection(sections, 'Melting Point')),
+                ['deg C', '°C']
+            )
         );
 
         // Density
-        const density = chooseValue(
-            extractValues(findSection(sections, 'Density')),
-            ['g/mL', 'g/ml', 'g/cm']
+        const density = fixUnitCasing(
+            chooseValue(
+                extractValues(findSection(sections, 'Density')),
+                ['g/mL', 'g/ml', 'g/cm']
+            )
         );
 
         // Solubility
-        const solubility = titleCase(
-            chooseValue(
-                extractValues(findSection(sections, 'Solubility')),
-                ['g/L', 'g/l', 'mg/mL', 'miscible']
+        const solubility = fixUnitCasing(
+            titleCase(
+                chooseValue(
+                    extractValues(findSection(sections, 'Solubility')),
+                    ['g/L', 'g/l', 'mg/mL', 'miscible']
+                )
             )
         );
 
