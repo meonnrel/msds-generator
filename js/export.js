@@ -18,12 +18,22 @@ const SAFETY_LABELS = {
     first_aid: 'First Aid'
 };
 
+// Font Size: 11pt = 22 (docx half-points)
+const FONT_SIZE_11PT = 22;
+// Line Spacing: 1.15 line height = 276 (where 240 is 1.0)
+const LINE_SPACING_115 = 276;
+
+// Table Column Widths in DXA (Total Printable Width = 9360 DXA for 8.5" page with 1" margins)
+const COL1_WIDTH_DXA = 2060; // Reagent (~22%)
+const COL2_WIDTH_DXA = 4300; // Physical Properties (~46%)
+const COL3_WIDTH_DXA = 3000; // Safety Information (~32%)
+
 /**
  * Format chemical formula into array of docx TextRun parts (subscript numbers)
  */
 function createFormulaRuns(docx, formula) {
     if (!formula || formula === 'Not Available') {
-        return [new docx.TextRun({ text: 'Not Available', font: 'Arial', size: 24 })];
+        return [new docx.TextRun({ text: 'Not Available', font: 'Arial', size: FONT_SIZE_11PT })];
     }
 
     const parts = formula.split(/(\d+)/);
@@ -32,7 +42,7 @@ function createFormulaRuns(docx, formula) {
         return new docx.TextRun({
             text: part,
             font: 'Arial',
-            size: 24,
+            size: FONT_SIZE_11PT,
             subScript: isNum
         });
     });
@@ -48,7 +58,7 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
         throw new Error('Word export library (docx.js) is not loaded.');
     }
 
-    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, BorderStyle } = window.docx;
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, LineRuleType } = window.docx;
 
     if (!filename.endsWith('.docx')) {
         filename += '.docx';
@@ -60,37 +70,41 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
     // Header Row
     const headerRow = new TableRow({
         tableHeader: true,
+        cantSplit: true,
         children: [
             new TableCell({
-                width: { size: 25, type: WidthType.PERCENTAGE },
+                width: { size: COL1_WIDTH_DXA, type: WidthType.DXA },
                 shading: { fill: 'F3F4F6' },
-                margins: { top: 150, bottom: 150, left: 150, right: 150 },
+                margins: { top: 120, bottom: 120, left: 140, right: 140 },
                 children: [
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
-                        children: [new TextRun({ text: 'Reagent', bold: true, font: 'Arial', size: 24, color: '111827' })]
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO },
+                        children: [new TextRun({ text: 'Reagent', bold: true, font: 'Arial', size: FONT_SIZE_11PT, color: '111827' })]
                     })
                 ]
             }),
             new TableCell({
-                width: { size: 42, type: WidthType.PERCENTAGE },
+                width: { size: COL2_WIDTH_DXA, type: WidthType.DXA },
                 shading: { fill: 'F3F4F6' },
-                margins: { top: 150, bottom: 150, left: 150, right: 150 },
+                margins: { top: 120, bottom: 120, left: 140, right: 140 },
                 children: [
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
-                        children: [new TextRun({ text: 'Chemical And Physical Properties', bold: true, font: 'Arial', size: 24, color: '111827' })]
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO },
+                        children: [new TextRun({ text: 'Chemical And Physical Properties', bold: true, font: 'Arial', size: FONT_SIZE_11PT, color: '111827' })]
                     })
                 ]
             }),
             new TableCell({
-                width: { size: 33, type: WidthType.PERCENTAGE },
+                width: { size: COL3_WIDTH_DXA, type: WidthType.DXA },
                 shading: { fill: 'F3F4F6' },
-                margins: { top: 150, bottom: 150, left: 150, right: 150 },
+                margins: { top: 120, bottom: 120, left: 140, right: 140 },
                 children: [
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
-                        children: [new TextRun({ text: 'Safety Information', bold: true, font: 'Arial', size: 24, color: '111827' })]
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO },
+                        children: [new TextRun({ text: 'Safety Information', bold: true, font: 'Arial', size: FONT_SIZE_11PT, color: '111827' })]
                     })
                 ]
             })
@@ -107,13 +121,15 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
         // Reagent Cell Paragraphs
         const reagentParagraphs = [
             new Paragraph({
-                children: [new TextRun({ text: chemicalName, bold: true, font: 'Arial', size: 24 })]
+                spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO, after: 40 },
+                children: [new TextRun({ text: chemicalName, bold: true, font: 'Arial', size: FONT_SIZE_11PT })]
             })
         ];
 
         if (selected.formula) {
             reagentParagraphs.push(
                 new Paragraph({
+                    spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO },
                     children: createFormulaRuns(docx, selected.formula)
                 })
             );
@@ -122,21 +138,26 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
         // Physical Properties Cell Paragraphs
         const propParagraphs = [];
         for (const [key, label] of Object.entries(PROPERTY_LABELS)) {
-            if (key === 'formula') continue; // Formula is in reagent cell
+            if (key === 'formula') continue;
             if (selected[key]) {
                 propParagraphs.push(
                     new Paragraph({
-                        spacing: { after: 60 },
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO, after: 40 },
                         children: [
-                            new TextRun({ text: `${label}: `, italics: true, font: 'Arial', size: 24 }),
-                            new TextRun({ text: String(selected[key]), font: 'Arial', size: 24 })
+                            new TextRun({ text: `${label}: `, italics: true, font: 'Arial', size: FONT_SIZE_11PT }),
+                            new TextRun({ text: String(selected[key]), font: 'Arial', size: FONT_SIZE_11PT })
                         ]
                     })
                 );
             }
         }
         if (propParagraphs.length === 0) {
-            propParagraphs.push(new Paragraph({ children: [new TextRun({ text: 'None selected', italics: true, font: 'Arial', size: 24 })] }));
+            propParagraphs.push(
+                new Paragraph({
+                    spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO },
+                    children: [new TextRun({ text: 'None selected', italics: true, font: 'Arial', size: FONT_SIZE_11PT })]
+                })
+            );
         }
 
         // Safety Info Cell Paragraphs
@@ -145,33 +166,42 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
             if (selected[key]) {
                 safetyParagraphs.push(
                     new Paragraph({
-                        spacing: { after: 60 },
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO, after: 40 },
                         children: [
-                            new TextRun({ text: `${label}: `, italics: true, font: 'Arial', size: 24 }),
-                            new TextRun({ text: String(selected[key]), font: 'Arial', size: 24 })
+                            new TextRun({ text: `${label}: `, italics: true, font: 'Arial', size: FONT_SIZE_11PT }),
+                            new TextRun({ text: String(selected[key]), font: 'Arial', size: FONT_SIZE_11PT })
                         ]
                     })
                 );
             }
         }
         if (safetyParagraphs.length === 0) {
-            safetyParagraphs.push(new Paragraph({ children: [new TextRun({ text: 'None selected', italics: true, font: 'Arial', size: 24 })] }));
+            safetyParagraphs.push(
+                new Paragraph({
+                    spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO },
+                    children: [new TextRun({ text: 'None selected', italics: true, font: 'Arial', size: FONT_SIZE_11PT })]
+                })
+            );
         }
 
-        // Add Row
+        // Add Row with cantSplit and explicit DXA cell widths
         tableRows.push(
             new TableRow({
+                cantSplit: true,
                 children: [
                     new TableCell({
-                        margins: { top: 120, bottom: 120, left: 150, right: 150 },
+                        width: { size: COL1_WIDTH_DXA, type: WidthType.DXA },
+                        margins: { top: 100, bottom: 100, left: 140, right: 140 },
                         children: reagentParagraphs
                     }),
                     new TableCell({
-                        margins: { top: 120, bottom: 120, left: 150, right: 150 },
+                        width: { size: COL2_WIDTH_DXA, type: WidthType.DXA },
+                        margins: { top: 100, bottom: 100, left: 140, right: 140 },
                         children: propParagraphs
                     }),
                     new TableCell({
-                        margins: { top: 120, bottom: 120, left: 150, right: 150 },
+                        width: { size: COL3_WIDTH_DXA, type: WidthType.DXA },
+                        margins: { top: 100, bottom: 100, left: 140, right: 140 },
                         children: safetyParagraphs
                     })
                 ]
@@ -179,26 +209,50 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
         );
     }
 
-    // Construct Document
+    // Construct Document with Arial 11pt and 1.15 line spacing default
     const doc = new Document({
+        styles: {
+            default: {
+                document: {
+                    run: {
+                        font: 'Arial',
+                        size: FONT_SIZE_11PT
+                    },
+                    paragraph: {
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO }
+                    }
+                }
+            }
+        },
         sections: [
             {
+                properties: {
+                    page: {
+                        margin: {
+                            top: 1440,    // 1 inch
+                            bottom: 1440, // 1 inch
+                            left: 1440,   // 1 inch
+                            right: 1440   // 1 inch
+                        }
+                    }
+                },
                 children: [
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 300 },
+                        spacing: { line: LINE_SPACING_115, lineRule: LineRuleType.AUTO, after: 240 },
                         children: [
                             new TextRun({
                                 text: 'Material Safety Data Sheet',
                                 bold: true,
                                 font: 'Arial',
-                                size: 36,
-                                color: '1F2937'
+                                size: 32, // 16pt title
+                                color: '111827'
                             })
                         ]
                     }),
                     new Table({
-                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        width: { size: 9360, type: WidthType.DXA }, // Full 6.5 inch printable table width
+                        columnWidths: [COL1_WIDTH_DXA, COL2_WIDTH_DXA, COL3_WIDTH_DXA],
                         rows: tableRows
                     })
                 ]
