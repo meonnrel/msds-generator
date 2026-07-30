@@ -3,6 +3,8 @@
  * Handles Word (.docx), CSV, and Clipboard copying
  */
 
+import { titleCase } from './pubchem.js';
+
 const PROPERTY_LABELS = {
     appearance: 'Appearance',
     odor: 'Odor',
@@ -127,7 +129,7 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
     // Data Rows
     for (const item of chemicals) {
         const selected = item.selected || {};
-        const chemicalName = item.name.charAt(0).toUpperCase() + item.name.slice(1);
+        const chemicalName = titleCase(item.name);
 
         // Reagent Cell Paragraphs
         const reagentParagraphs = [
@@ -296,7 +298,7 @@ export function exportToCsv(chemicals, filename = 'MSDS_Output.csv') {
     for (const item of chemicals) {
         const s = item.selected || {};
         rows.push([
-            item.name,
+            titleCase(item.name),
             s.formula || '',
             s.molar_mass || '',
             s.appearance || '',

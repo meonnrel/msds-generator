@@ -60,11 +60,13 @@ export function fixUnitCasing(text) {
 }
 
 /**
- * Capitalize first letter of each word while preserving scientific units
+ * Capitalize first letter of each word (Title Case) while preserving Roman numerals & scientific units
  */
 export function titleCase(text) {
     if (!text || text === 'Not Available' || text === 'Not available') return text;
-    const formatted = text.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    let formatted = text.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    // Preserve Roman numerals inside parentheses (e.g. (ii) -> (II), (iii) -> (III), (iv) -> (IV))
+    formatted = formatted.replace(/\((i{1,3}|iv|v|vi{1,3}|ix|x)\)/gi, (m) => m.toUpperCase());
     return fixUnitCasing(formatted);
 }
 
@@ -344,6 +346,7 @@ export async function getChemicalData(chemicalName) {
     if (!chemicalName || !chemicalName.trim()) return null;
 
     const trimmedName = chemicalName.trim();
+    const titleCasedName = titleCase(trimmedName);
 
     try {
         // 1. Get CID
@@ -374,7 +377,7 @@ export async function getChemicalData(chemicalName) {
 
         return {
             cid,
-            name: trimmedName,
+            name: titleCasedName,
             formula: basic.formula,
             molar_mass: basic.molarMass,
             properties,

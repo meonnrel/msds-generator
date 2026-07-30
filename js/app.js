@@ -3,7 +3,7 @@
  * MSDS Generator Web Version
  */
 
-import { getChemicalData, fetchAutocomplete, formatFormulaHtml } from './pubchem.js';
+import { getChemicalData, fetchAutocomplete, formatFormulaHtml, titleCase } from './pubchem.js';
 import { exportToDocx, exportToCsv, copyTableToClipboard } from './export.js';
 
 // Available Properties
@@ -238,7 +238,7 @@ function renderMsdsPreview(chemicals) {
 
     for (const item of chemicals) {
         const selected = item.selected || {};
-        const chemicalName = item.name.charAt(0).toUpperCase() + item.name.slice(1);
+        const chemicalName = titleCase(item.name);
         const formulaHtml = formatFormulaHtml(selected.formula);
 
         // Reagent Cell
