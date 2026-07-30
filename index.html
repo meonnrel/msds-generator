@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +10,7 @@
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Styles -->
@@ -22,29 +22,25 @@
 <body>
 
     <div class="app-container">
-        
-        <!-- Header Navbar (No Logo) -->
+
+        <!-- Header Navbar -->
         <header class="navbar">
             <div class="brand-text">
                 <h1>MSDS Generator</h1>
                 <p>For pre-lab crammers like you and me! :3</p>
             </div>
             <div class="nav-actions">
-                <button type="button" class="btn-icon" id="themeToggleBtn" title="Toggle Theme">
-                    <i class="fas fa-sun"></i>
-                </button>
-                <a href="https://github.com/meonnrel" target="_blank" rel="noopener" class="btn-icon" title="GitHub Repository">
+                <a href="https://github.com/meonnrel" target="_blank" rel="noopener" class="btn-icon" title="GitHub">
                     <i class="fab fa-github"></i>
                 </a>
             </div>
         </header>
 
-        <!-- Main Workspace Grid -->
+        <!-- Main Grid -->
         <main class="main-grid">
 
-            <!-- Left Panel: Minimalist Input Controls -->
+            <!-- Left Panel -->
             <section class="panel-card left-panel">
-                <!-- Document Name -->
                 <div class="doc-options-grid">
                     <div class="form-group">
                         <label for="filenameInput">Filename</label>
@@ -52,12 +48,8 @@
                     </div>
                 </div>
 
-                <!-- Reagents List Container -->
-                <div class="reagents-list" id="reagentsList">
-                    <!-- Reagent cards added dynamically -->
-                </div>
+                <div class="reagents-list" id="reagentsList"></div>
 
-                <!-- Action Controls -->
                 <div class="action-bar">
                     <button type="button" class="btn-secondary" id="btnAddReagent">
                         <i class="fas fa-plus"></i> Add Reagent
@@ -68,27 +60,26 @@
                 </div>
             </section>
 
-            <!-- Right Panel: Live MSDS Preview & Export -->
+            <!-- Right Panel -->
             <section class="panel-card right-panel">
                 <div class="msds-preview-container">
                     <div class="preview-toolbar">
                         <div class="export-btns">
-                            <button type="button" class="btn-export docx" id="btnExportDocx" title="Export to Word Document">
+                            <button type="button" class="btn-export docx" id="btnExportDocx">
                                 <i class="fas fa-file-word"></i> Download .docx
                             </button>
-                            <button type="button" class="btn-export" id="btnExportCsv" title="Export to CSV">
+                            <button type="button" class="btn-export" id="btnExportCsv">
                                 <i class="fas fa-file-csv"></i> CSV
                             </button>
-                            <button type="button" class="btn-export" id="btnCopyClipboard" title="Copy Formatted Table">
+                            <button type="button" class="btn-export" id="btnCopyClipboard">
                                 <i class="fas fa-copy"></i> Copy
                             </button>
-                            <button type="button" class="btn-export" id="btnPrintMsds" title="Print Document">
+                            <button type="button" class="btn-export" id="btnPrintMsds">
                                 <i class="fas fa-print"></i> Print
                             </button>
                         </div>
                     </div>
 
-                    <!-- Live MSDS Formatted Paper View -->
                     <div class="msds-paper" id="msdsPaper">
                         <div class="empty-state">
                             <p>Enter chemical names to generate your MSDS table.</p>
@@ -99,17 +90,14 @@
 
         </main>
 
-        <!-- Footer -->
         <footer class="footer">
             <p>coded by <a href="https://www.instagram.com/meonnrel/" target="_blank" rel="noopener">@meonnrel</a></p>
         </footer>
 
     </div>
 
-    <!-- Toast Notifications Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Application Script -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

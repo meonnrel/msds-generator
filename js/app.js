@@ -32,7 +32,6 @@ let btnAddReagent;
 let btnGenerate;
 let msdsPaperEl;
 let filenameInput;
-let themeToggleBtn;
 let btnExportDocx;
 let btnExportCsv;
 let btnCopyClipboard;
@@ -409,32 +408,6 @@ async function generateMsds() {
 }
 
 /**
- * Theme Toggle Handler
- */
-function initThemeToggle() {
-    if (!themeToggleBtn) return;
-    const savedTheme = localStorage.getItem('msds_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-
-    themeToggleBtn.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('msds_theme', newTheme);
-        updateThemeIcon(newTheme);
-    });
-}
-
-function updateThemeIcon(theme) {
-    if (!themeToggleBtn) return;
-    const icon = themeToggleBtn.querySelector('i');
-    if (icon) {
-        icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    }
-}
-
-/**
  * Bind Export Handlers
  */
 function initExportHandlers() {
@@ -508,14 +481,12 @@ function initApp() {
     btnGenerate = document.getElementById('btnGenerate');
     msdsPaperEl = document.getElementById('msdsPaper');
     filenameInput = document.getElementById('filenameInput');
-    themeToggleBtn = document.getElementById('themeToggleBtn');
     btnExportDocx = document.getElementById('btnExportDocx');
     btnExportCsv = document.getElementById('btnExportCsv');
     btnCopyClipboard = document.getElementById('btnCopyClipboard');
     btnPrintMsds = document.getElementById('btnPrintMsds');
     toastContainer = document.getElementById('toastContainer');
 
-    initThemeToggle();
     createReagentCard();
     initExportHandlers();
 
