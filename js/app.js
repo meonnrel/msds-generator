@@ -38,7 +38,6 @@ const btnExportCsv = document.getElementById('btnExportCsv');
 const btnCopyClipboard = document.getElementById('btnCopyClipboard');
 const btnPrintMsds = document.getElementById('btnPrintMsds');
 const toastContainer = document.getElementById('toastContainer');
-const presetsWrapEl = document.getElementById('presetsWrap');
 
 /**
  * Show Toast Notification
@@ -94,12 +93,12 @@ function createReagentCard(initialName = '') {
             </div>
         </div>
         <div class="search-wrapper">
-            <input type="text" class="input-control chemical-name-input" placeholder="e.g. Ethanol, Acetone, Hydrochloric acid..." value="${initialName}" data-id="${cardId}" autocomplete="off">
+            <input type="text" class="input-control chemical-name-input" placeholder="Chemical name (e.g. Ethanol)" value="${initialName}" data-id="${cardId}" autocomplete="off">
             <div class="autocomplete-dropdown" id="dropdown_${cardId}"></div>
         </div>
         <div class="props-toggle-section">
             <div class="props-toggle-header">
-                <span>Included Properties</span>
+                <span>Properties</span>
                 <span class="toggle-all-link" data-id="${cardId}" data-state="all">Select / Unselect All</span>
             </div>
             <div class="props-grid">
@@ -130,7 +129,6 @@ function createReagentCard(initialName = '') {
     });
 
     nameInput.addEventListener('blur', () => {
-        // Hide dropdown after small delay to allow item click
         setTimeout(() => dropdown.classList.remove('active'), 200);
     });
 
@@ -196,7 +194,6 @@ function handleAutocomplete(query, dropdownEl, inputEl, reagentObj) {
 
         dropdownEl.classList.add('active');
 
-        // Add Click handlers to items
         dropdownEl.querySelectorAll('.autocomplete-item').forEach(item => {
             item.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -226,9 +223,7 @@ function renderMsdsPreview(chemicals) {
     if (!chemicals || chemicals.length === 0) {
         msdsPaperEl.innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-flask"></i>
-                <h3>No Chemicals Generated Yet</h3>
-                <p>Add reagent names above and click <strong>Generate MSDS</strong> to create your table.</p>
+                <p>Enter chemical names to generate your MSDS table.</p>
             </div>
         `;
         return;
@@ -308,7 +303,6 @@ function renderMsdsPreview(chemicals) {
     msdsPaperEl.innerHTML = `
         <div class="msds-paper-header">
             <h2>Material Safety Data Sheet</h2>
-            <p>Generated via PubChem Database • Pre-Lab Reagent Reference</p>
         </div>
         <table class="msds-table">
             <thead>
@@ -326,7 +320,7 @@ function renderMsdsPreview(chemicals) {
 }
 
 /**
- * Show Skeleton Loader in Preview
+ * Show Loading State
  */
 function showPreviewSkeleton() {
     msdsPaperEl.innerHTML = `
@@ -334,11 +328,9 @@ function showPreviewSkeleton() {
             <h2>Material Safety Data Sheet</h2>
             <p>Fetching chemical records from PubChem...</p>
         </div>
-        <div style="padding: 20px;">
-            <div class="skeleton" style="width: 100%; height: 35px; margin-bottom: 20px;"></div>
-            <div class="skeleton" style="width: 100%; height: 60px;"></div>
-            <div class="skeleton" style="width: 100%; height: 60px;"></div>
-            <div class="skeleton" style="width: 100%; height: 60px;"></div>
+        <div style="padding: 20px; text-align: center; color: #94a3b8;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
+            <p>Loading chemical data...</p>
         </div>
     `;
 }
@@ -355,7 +347,7 @@ async function generateMsds() {
     }
 
     btnGenerate.disabled = true;
-    btnGenerate.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Fetching PubChem...`;
+    btnGenerate.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Fetching...`;
     showPreviewSkeleton();
 
     processedChemicals = [];
@@ -365,7 +357,6 @@ async function generateMsds() {
         try {
             const data = await getChemicalData(reagent.name);
             if (data) {
-                // Filter properties based on checkboxes
                 const selected = {};
                 for (const [propKey, isChecked] of Object.entries(reagent.checkboxes)) {
                     if (isChecked) {
@@ -401,52 +392,10 @@ async function generateMsds() {
     if (errors.length > 0) {
         showToast(`Skipped invalid chemical(s): ${errors.join(', ')}`, 'info');
     } else {
-        showToast(`Successfully generated MSDS for ${processedChemicals.length} chemical(s)!`, 'success');
+        showToast(`Generated MSDS for ${processedChemicals.length} chemical(s)!`, 'success');
     }
 
     renderMsdsPreview(processedChemicals);
-}
-
-/**
- * Initialize Preset Buttons
- */
-function initPresets() {
-    const presets = [
-        'Ethanol',
-        'Acetone',
-        'Hydrochloric acid',
-        'Sodium hydroxide',
-        'Sulfuric acid',
-        'Benzoic acid',
-        'Methanol',
-        'Copper(II) sulfate'
-    ];
-
-    presetsWrapEl.innerHTML = presets.map(p => `
-        <button class="preset-chip" type="button" data-name="${p}">
-            <i class="fas fa-plus"></i> ${p}
-        </button>
-    `).join('');
-
-    presetsWrapEl.querySelectorAll('.preset-chip').forEach(chip => {
-        chip.addEventListener('click', async () => {
-            const name = chip.getAttribute('data-name');
-            // Check if last input is empty, fill it, else add new card
-            const lastReagent = reagentsState[reagentsState.length - 1];
-            if (lastReagent && (!lastReagent.name || !lastReagent.name.trim())) {
-                lastReagent.name = name;
-                const cardEl = document.getElementById(`reagentCard_${lastReagent.id}`);
-                if (cardEl) {
-                    const input = cardEl.querySelector('.chemical-name-input');
-                    if (input) input.value = name;
-                }
-            } else {
-                createReagentCard(name);
-            }
-
-            await generateMsds();
-        });
-    });
 }
 
 /**
@@ -477,10 +426,9 @@ function updateThemeIcon(theme) {
  * Bind Export Handlers
  */
 function initExportHandlers() {
-    // Export DOCX
     btnExportDocx.addEventListener('click', async () => {
         if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first before exporting.', 'error');
+            showToast('Please generate an MSDS first.', 'error');
             return;
         }
         const filename = filenameInput.value.trim() || 'MSDS_Output.docx';
@@ -488,7 +436,7 @@ function initExportHandlers() {
             btnExportDocx.disabled = true;
             btnExportDocx.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Exporting...`;
             await exportToDocx(processedChemicals, filename);
-            showToast('Word document exported successfully!', 'success');
+            showToast('Word document exported!', 'success');
         } catch (e) {
             console.error(e);
             showToast('Failed to export Word document.', 'error');
@@ -498,18 +446,16 @@ function initExportHandlers() {
         }
     });
 
-    // Export CSV
     btnExportCsv.addEventListener('click', () => {
         if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first before exporting.', 'error');
+            showToast('Please generate an MSDS first.', 'error');
             return;
         }
         const filename = (filenameInput.value.trim() || 'MSDS_Output').replace(/\.docx$/i, '') + '.csv';
         exportToCsv(processedChemicals, filename);
-        showToast('CSV file downloaded!', 'success');
+        showToast('CSV downloaded!', 'success');
     });
 
-    // Copy to Clipboard
     btnCopyClipboard.addEventListener('click', async () => {
         if (processedChemicals.length === 0) {
             showToast('Please generate an MSDS first.', 'error');
@@ -517,16 +463,15 @@ function initExportHandlers() {
         }
         try {
             await copyTableToClipboard(processedChemicals);
-            showToast('Formatted MSDS copied to clipboard!', 'success');
+            showToast('MSDS copied to clipboard!', 'success');
         } catch (e) {
             showToast('Failed to copy table.', 'error');
         }
     });
 
-    // Print
     btnPrintMsds.addEventListener('click', () => {
         if (processedChemicals.length === 0) {
-            showToast('Please generate an MSDS first before printing.', 'error');
+            showToast('Please generate an MSDS first.', 'error');
             return;
         }
         window.print();
@@ -536,8 +481,7 @@ function initExportHandlers() {
 // App Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initThemeToggle();
-    initPresets();
-    createReagentCard(); // Create initial reagent card 1
+    createReagentCard();
     initExportHandlers();
 
     btnAddReagent.addEventListener('click', () => {
