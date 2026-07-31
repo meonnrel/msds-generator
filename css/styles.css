@@ -2,7 +2,7 @@
    MSDS Generator Web - Blocky Flat Pastel Purple / Off-White
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Outfit:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@400;500;600&display=swap');
 
 :root {
     --bg-base:       #f5f2f9;
@@ -67,12 +67,12 @@ body {
 }
 
 .brand-text h1 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 2rem;
-    font-weight: 700;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 2.85rem;
+    font-weight: 400;
     color: var(--text-primary);
-    letter-spacing: -0.01em;
-    line-height: 1.1;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
 }
 
 .brand-text p {

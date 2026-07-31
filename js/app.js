@@ -4,7 +4,7 @@
  */
 
 import { getChemicalData, fetchAutocomplete, formatFormulaHtml, titleCase } from './pubchem.js';
-import { exportToDocx, exportToCsv, copyTableToClipboard } from './export.js';
+import { exportToDocx } from './export.js';
 
 // Available Properties
 const ALL_PROPERTIES = [
@@ -33,9 +33,6 @@ let btnGenerate;
 let msdsPaperEl;
 let filenameInput;
 let btnExportDocx;
-let btnExportCsv;
-let btnCopyClipboard;
-let btnPrintMsds;
 let toastContainer;
 
 /**
@@ -433,42 +430,6 @@ function initExportHandlers() {
         });
     }
 
-    if (btnExportCsv) {
-        btnExportCsv.addEventListener('click', () => {
-            if (processedChemicals.length === 0) {
-                showToast('Please generate an MSDS first.', 'error');
-                return;
-            }
-            const filename = ((filenameInput ? filenameInput.value.trim() : '') || 'MSDS_Output').replace(/\.docx$/i, '') + '.csv';
-            exportToCsv(processedChemicals, filename);
-            showToast('CSV downloaded!', 'success');
-        });
-    }
-
-    if (btnCopyClipboard) {
-        btnCopyClipboard.addEventListener('click', async () => {
-            if (processedChemicals.length === 0) {
-                showToast('Please generate an MSDS first.', 'error');
-                return;
-            }
-            try {
-                await copyTableToClipboard(processedChemicals);
-                showToast('MSDS copied to clipboard!', 'success');
-            } catch (e) {
-                showToast('Failed to copy table.', 'error');
-            }
-        });
-    }
-
-    if (btnPrintMsds) {
-        btnPrintMsds.addEventListener('click', () => {
-            if (processedChemicals.length === 0) {
-                showToast('Please generate an MSDS first.', 'error');
-                return;
-            }
-            window.print();
-        });
-    }
 }
 
 /**
@@ -482,9 +443,6 @@ function initApp() {
     msdsPaperEl = document.getElementById('msdsPaper');
     filenameInput = document.getElementById('filenameInput');
     btnExportDocx = document.getElementById('btnExportDocx');
-    btnExportCsv = document.getElementById('btnExportCsv');
-    btnCopyClipboard = document.getElementById('btnCopyClipboard');
-    btnPrintMsds = document.getElementById('btnPrintMsds');
     toastContainer = document.getElementById('toastContainer');
 
     createReagentCard();

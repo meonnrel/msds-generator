@@ -1,6 +1,6 @@
 /**
  * Document Export Module for MSDS Generator
- * Handles Word (.docx), CSV, and Clipboard copying
+ * Handles Word (.docx) export
  */
 
 import { titleCase } from './pubchem.js';
@@ -283,78 +283,4 @@ export async function exportToDocx(chemicals, filename = 'MSDS_Output.docx') {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
-
-/**
- * Export selected chemical data to CSV format
- */
-export function exportToCsv(chemicals, filename = 'MSDS_Output.csv') {
-    if (!filename.endsWith('.csv')) filename += '.csv';
-
-    const rows = [
-        ['Reagent', 'Formula', 'Molar Mass', 'Appearance', 'Odor', 'Boiling Point', 'Melting Point', 'Density', 'Solubility', 'Hazards', 'First Aid']
-    ];
-
-    for (const item of chemicals) {
-        const s = item.selected || {};
-        rows.push([
-            titleCase(item.name),
-            s.formula || '',
-            s.molar_mass || '',
-            s.appearance || '',
-            s.odor || '',
-            s.boiling_point || '',
-            s.melting_point || '',
-            s.density || '',
-            s.solubility || '',
-            s.hazards || '',
-            s.first_aid || ''
-        ]);
-    }
-
-    const csvContent = rows
-        .map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
-        .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-/**
- * Copy formatted text table to clipboard
- */
-export async function copyTableToClipboard(chemicals) {
-    let tsv = 'Reagent\tChemical & Physical Properties\tSafety Information\n';
-
-    for (const item of chemicals) {
-        const s = item.selected || {};
-        const chemicalName = item.name.toUpperCase() + (s.formula ? ` (${s.formula})` : '');
-        
-        const propsArr = [];
-        for (const [key, label] of Object.entries(PROPERTY_LABELS)) {
-            if (key !== 'formula' && s[key]) {
-                propsArr.push(`${label}: ${s[key]}`);
-            }
-        }
-        const propsStr = propsArr.join(' | ');
-
-        const safetyArr = [];
-        for (const [key, label] of Object.entries(SAFETY_LABELS)) {
-            if (s[key]) {
-                safetyArr.push(`${label}: ${s[key]}`);
-            }
-        }
-        const safetyStr = safetyArr.join(' | ');
-
-        tsv += `${chemicalName}\t${propsStr}\t${safetyStr}\n`;
-    }
-
-    await navigator.clipboard.writeText(tsv);
 }
