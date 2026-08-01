@@ -4,21 +4,43 @@
  */
 
 import { getChemicalData, fetchAutocomplete, formatFormulaHtml, titleCase } from './pubchem.js';
-import { exportToDocx } from './export.js';
+import { exportToDocx, copyTableToClipboard } from './export.js';
+import { preloadRDKit, smilesToSvg } from './structure.js';
+import { classifyWasteCode } from './wasteCodes.js';
 
-// Available Properties
-const ALL_PROPERTIES = [
-    { key: 'formula', label: 'Formula' },
-    { key: 'molar_mass', label: 'Molar Mass' },
-    { key: 'appearance', label: 'Appearance' },
-    { key: 'odor', label: 'Odor' },
-    { key: 'boiling_point', label: 'Boiling Point' },
-    { key: 'melting_point', label: 'Melting Point' },
-    { key: 'density', label: 'Density' },
-    { key: 'solubility', label: 'Solubility' },
-    { key: 'hazards', label: 'Hazards' },
-    { key: 'first_aid', label: 'First Aid' }
+// Available Properties, grouped to mirror the three MSDS table columns
+// (Reagent | Chemical And Physical Properties | Safety Information)
+const PROPERTY_GROUPS = [
+    {
+        title: 'Reagent',
+        properties: [
+            { key: 'formula', label: 'Formula' },
+            { key: 'structure', label: 'Structure' }
+        ]
+    },
+    {
+        title: 'Chemical And Physical Properties',
+        properties: [
+            { key: 'molar_mass', label: 'Molar Mass' },
+            { key: 'appearance', label: 'Appearance' },
+            { key: 'odor', label: 'Odor' },
+            { key: 'boiling_point', label: 'Boiling Point' },
+            { key: 'melting_point', label: 'Melting Point' },
+            { key: 'density', label: 'Density' },
+            { key: 'solubility', label: 'Solubility' }
+        ]
+    },
+    {
+        title: 'Safety Information',
+        properties: [
+            { key: 'hazards', label: 'Hazards' },
+            { key: 'first_aid', label: 'First Aid' },
+            { key: 'waste_code', label: 'Waste Code' }
+        ]
+    }
 ];
+
+const ALL_PROPERTIES = PROPERTY_GROUPS.flatMap((group) => group.properties);
 
 // App State
 let reagentCounter = 0;
@@ -33,6 +55,7 @@ let btnGenerate;
 let msdsPaperEl;
 let filenameInput;
 let btnExportDocx;
+let btnCopyGoogleDocs;
 let toastContainer;
 
 /**
@@ -98,11 +121,15 @@ function createReagentCard(initialName = '') {
                 <span class="toggle-all-link" data-id="${cardId}" data-state="all">Select / Unselect All</span>
             </div>
             <div class="props-grid">
-                ${ALL_PROPERTIES.map(p => `
-                    <label class="checkbox-label">
-                        <input type="checkbox" data-id="${cardId}" data-prop="${p.key}" checked>
-                        <span>${p.label}</span>
-                    </label>
+                ${PROPERTY_GROUPS.map(group => `
+                    <div class="props-group">
+                        ${group.properties.map(p => `
+                            <label class="checkbox-label">
+                                <input type="checkbox" data-id="${cardId}" data-prop="${p.key}" checked>
+                                <span>${p.label}</span>
+                            </label>
+                        `).join('')}
+                    </div>
                 `).join('')}
             </div>
         </div>
@@ -231,6 +258,7 @@ function renderMsdsPreview(chemicals) {
     }
 
     let rowsHtml = '';
+    let anyWasteCodeShown = false;
 
     for (const item of chemicals) {
         const selected = item.selected || {};
@@ -241,6 +269,7 @@ function renderMsdsPreview(chemicals) {
         const reagentCell = `
             <div class="reagent-name-cell">${chemicalName}</div>
             ${selected.formula ? `<div class="reagent-formula-cell">${formulaHtml}</div>` : ''}
+            ${item.structureSvg ? `<div class="reagent-structure-cell">${item.structureSvg}</div>` : ''}
         `;
 
         // Physical Properties Cell
@@ -290,6 +319,16 @@ function renderMsdsPreview(chemicals) {
             `);
         }
 
+        if (selected.waste_code) {
+            safetyItems.push(`
+                <div class="prop-list-item">
+                    <span class="prop-label">Waste Code:</span>
+                    <span class="prop-value">${selected.waste_code}</span>
+                </div>
+            `);
+            anyWasteCodeShown = true;
+        }
+
         const safetyCell = safetyItems.length > 0 ? safetyItems.join('') : '<em>None selected</em>';
 
         rowsHtml += `
@@ -308,15 +347,20 @@ function renderMsdsPreview(chemicals) {
         <table class="msds-table">
             <thead>
                 <tr>
-                    <th style="width: 25%;">Reagent</th>
-                    <th style="width: 42%;">Chemical And Physical Properties</th>
-                    <th style="width: 33%;">Safety Information</th>
+                    <th style="width: 32%;">Reagent</th>
+                    <th style="width: 38%;">Chemical And Physical Properties</th>
+                    <th style="width: 30%;">Safety Information</th>
                 </tr>
             </thead>
             <tbody>
                 ${rowsHtml}
             </tbody>
         </table>
+        ${anyWasteCodeShown ? `
+            <p class="waste-code-footnote">
+                Waste codes are auto-classified from the DENR Hazardous Waste Classification &amp; Coding guide based on chemical identity, not measured pH or lab-tested concentration &mdash; verify before disposal.
+            </p>
+        ` : ''}
     `;
 }
 
@@ -372,10 +416,20 @@ async function generateMsds() {
                             selected.formula = data.formula;
                         } else if (propKey === 'molar_mass') {
                             selected.molar_mass = data.molar_mass;
+                        } else if (propKey === 'waste_code') {
+                            selected.waste_code = classifyWasteCode({
+                                name: data.name,
+                                formula: data.formula,
+                                hazards: data.safety.hazards,
+                                appearance: data.properties.appearance,
+                                meltingPoint: data.properties.melting_point,
+                                boilingPoint: data.properties.boiling_point
+                            });
                         }
                     }
                 }
                 data.selected = selected;
+                data.structureSvg = reagent.checkboxes.structure ? await smilesToSvg(data.smiles) : null;
                 processedChemicals.push(data);
             }
         } catch (err) {
@@ -386,7 +440,7 @@ async function generateMsds() {
 
     if (btnGenerate) {
         btnGenerate.disabled = false;
-        btnGenerate.innerHTML = `<i class="fas fa-bolt"></i> Generate MSDS`;
+        btnGenerate.innerHTML = `<i class="fas fa-heart"></i> Generate MSDS`;
     }
 
     if (processedChemicals.length === 0) {
@@ -430,6 +484,26 @@ function initExportHandlers() {
         });
     }
 
+    if (btnCopyGoogleDocs) {
+        btnCopyGoogleDocs.addEventListener('click', async () => {
+            if (processedChemicals.length === 0) {
+                showToast('Please generate an MSDS first.', 'error');
+                return;
+            }
+            try {
+                btnCopyGoogleDocs.disabled = true;
+                btnCopyGoogleDocs.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Copying...`;
+                await copyTableToClipboard(processedChemicals);
+                showToast('Table copied! Paste it into your Google Doc.', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('Failed to copy table.', 'error');
+            } finally {
+                btnCopyGoogleDocs.disabled = false;
+                btnCopyGoogleDocs.innerHTML = `<i class="fas fa-copy"></i> Copy For Google Docs`;
+            }
+        });
+    }
 }
 
 /**
@@ -443,10 +517,12 @@ function initApp() {
     msdsPaperEl = document.getElementById('msdsPaper');
     filenameInput = document.getElementById('filenameInput');
     btnExportDocx = document.getElementById('btnExportDocx');
+    btnCopyGoogleDocs = document.getElementById('btnCopyGoogleDocs');
     toastContainer = document.getElementById('toastContainer');
 
     createReagentCard();
     initExportHandlers();
+    preloadRDKit();
 
     if (btnAddReagent) {
         btnAddReagent.addEventListener('click', () => {

@@ -144,29 +144,54 @@ function chooseValue(values, units = []) {
     return cleanText(values[0]);
 }
 
+// Appearance is described as at most one word per category — color, texture, then
+// physical state — picked by earliest position in the source text, not just "every
+// keyword present anywhere". PubChem's physical description text often packs in
+// multiple synonyms, alternate-form notes, or (for indicators) color-change behavior;
+// collecting all of them produces run-ons like "Colorless Liquid Gas". Picking one
+// per category and reading them in the order they were written keeps the result to a
+// single natural phrase instead.
+const APPEARANCE_COLORS = [
+    'colorless', 'clear', 'white', 'yellow', 'pink', 'red', 'orange',
+    'purple', 'violet', 'blue', 'green', 'brown', 'black', 'gray', 'grey'
+];
+const APPEARANCE_TEXTURES = [
+    'crystalline', 'crystals', 'powder', 'granular', 'viscous',
+    'amorphous', 'waxy', 'oily', 'syrupy', 'fibrous'
+];
+const APPEARANCE_STATES = ['liquid', 'solid', 'gas'];
+
 /**
- * Clean appearance string
+ * Earliest-occurring keyword from a list within lowercased text, or null if none present
+ */
+function earliestKeyword(lowerText, keywords) {
+    let bestIndex = Infinity;
+    let bestWord = null;
+    for (const word of keywords) {
+        const idx = lowerText.indexOf(word);
+        if (idx !== -1 && idx < bestIndex) {
+            bestIndex = idx;
+            bestWord = word;
+        }
+    }
+    return bestWord;
+}
+
+/**
+ * Clean appearance string into a short "Color Texture State" phrase
  */
 function cleanAppearance(text) {
     if (!text || text === 'Not Available') return 'Not Available';
 
-    const keywords = [
-        'clear', 'colorless', 'colored', 'yellow', 'white', 'blue',
-        'green', 'brown', 'black', 'red', 'orange', 'purple',
-        'liquid', 'solid', 'gas', 'crystalline', 'powder', 'granular', 'viscous'
-    ];
-
     const lowerText = text.toLowerCase();
-    const found = [];
+    const phrase = [
+        earliestKeyword(lowerText, APPEARANCE_COLORS),
+        earliestKeyword(lowerText, APPEARANCE_TEXTURES),
+        earliestKeyword(lowerText, APPEARANCE_STATES)
+    ].filter(Boolean).join(' ');
 
-    for (const word of keywords) {
-        if (lowerText.includes(word) && !found.includes(word)) {
-            found.push(word);
-        }
-    }
-
-    if (found.length > 0) {
-        return titleCase(found.join(' '));
+    if (phrase) {
+        return titleCase(phrase);
     }
     return titleCase(text.split('.')[0]);
 }
@@ -203,23 +228,35 @@ function cleanHazards(text) {
 function getBasicProperties(compoundRecord) {
     let formula = 'Not Available';
     let molarMass = 'Not Available';
+    // PubChem's PUG REST props label these "Absolute" (isomeric, with stereochemistry)
+    // and "Connectivity" (canonical, connectivity-only) rather than "Isomeric"/"Canonical"
+    let absoluteSmiles = 'Not Available';
+    let connectivitySmiles = 'Not Available';
 
     try {
         const props = compoundRecord?.PC_Compounds?.[0]?.props || [];
         for (const prop of props) {
             const label = prop?.urn?.label;
+            const name = prop?.urn?.name;
             if (label === 'Molecular Formula') {
                 formula = prop?.value?.sval || formula;
             } else if (label === 'Molecular Weight') {
                 const val = prop?.value?.sval || prop?.value?.fval;
                 if (val) molarMass = fixUnitCasing(`${val} g/mol`);
+            } else if (label === 'SMILES' && name === 'Absolute') {
+                absoluteSmiles = prop?.value?.sval || absoluteSmiles;
+            } else if (label === 'SMILES' && name === 'Connectivity') {
+                connectivitySmiles = prop?.value?.sval || connectivitySmiles;
             }
         }
     } catch (e) {
         console.warn('Error parsing basic properties:', e);
     }
 
-    return { formula, molarMass };
+    // Prefer the absolute (isomeric) SMILES, which captures stereochemistry
+    const smiles = absoluteSmiles !== 'Not Available' ? absoluteSmiles : connectivitySmiles;
+
+    return { formula, molarMass, smiles };
 }
 
 /**
@@ -380,6 +417,7 @@ export async function getChemicalData(chemicalName) {
             name: titleCasedName,
             formula: basic.formula,
             molar_mass: basic.molarMass,
+            smiles: basic.smiles,
             properties,
             safety
         };
